@@ -1,0 +1,1396 @@
+import React, { useState, useEffect } from "react";
+
+// ============================================================
+// 算命学 データベース
+// ============================================================
+
+// --- 十大主星（じゅうだいしゅせい）：才能・性格の星 ---
+const TEN_STARS = {
+  貫索星: {
+    yomi: "かんさくせい",
+    group: "守備本能",
+    element: "陽の樹（大木）",
+    short: "自分の意志を貫く、マイペースな自立の星。",
+    long: "大地にどっしりと根を張った大木のような星です。一度決めたことは揺るがない強い意志と独立心を持ち、自分のペースを何より大切にします。人に流されず、コツコツと自分の道を歩む粘り強さが最大の武器。一方で頑固さや融通のきかなさが出ることも。じっくり時間をかけて取り組む仕事や、一国一城の主として独立する生き方が向いています。",
+    keywords: ["自立", "意志", "マイペース", "頑固", "継続力"],
+  },
+  石門星: {
+    yomi: "せきもんせい",
+    group: "守備本能",
+    element: "陰の樹（草花・蔦）",
+    short: "人脈を広げ、輪の中心になる社交の星。",
+    long: "蔦が絡み合って広がるように、人と人をつないでいく星です。誰とでも分け隔てなく付き合える社交性と協調性を持ち、自然と人が集まってくる『組織の人』。リーダーというより、みんなをまとめる調整役・親分肌として力を発揮します。仲間や組織の中でこそ輝くタイプで、孤立すると本来の力が出にくくなります。",
+    keywords: ["社交性", "人脈", "協調", "組織", "親分肌"],
+  },
+  鳳閣星: {
+    yomi: "ほうかくせい",
+    group: "伝達本能",
+    element: "陽の火（太陽）",
+    short: "自然体で楽しむ、表現と遊びの星。",
+    long: "燦々と輝く太陽のように、おおらかで自然体な星です。物事を楽しみながら表現する才能に恵まれ、食べる・しゃべる・遊ぶといった『五感を使う楽しみ』が運を運んできます。子どものような無邪気さと余裕を持ち、人を和ませる癒やしの存在。焦らずのんびり構えることで本来のセンスが発揮されます。芸術・飲食・話術などの分野と好相性。",
+    keywords: ["表現", "自然体", "遊び", "おおらか", "五感"],
+  },
+  調舒星: {
+    yomi: "ちょうじょせい",
+    group: "伝達本能",
+    element: "陰の火（灯火・星）",
+    short: "繊細な感性で表現する、芸術家の星。",
+    long: "暗闇に灯る一点の炎のような、鋭く繊細な感性の星です。人と同じことを嫌い、独自の世界観や美意識を持つ生粋のアーティスト。喜怒哀楽が豊かで、その感情の振れ幅が創作のエネルギーになります。完璧主義で妥協を許さない一方、孤独を愛し、寂しさを抱えやすい繊細さも。文章・音楽・デザインなど、感性を形にする仕事で才能が開花します。",
+    keywords: ["感性", "芸術", "完璧主義", "反骨", "繊細"],
+  },
+  禄存星: {
+    yomi: "ろくぞんせい",
+    group: "引力本能",
+    element: "陽の土（山・大地）",
+    short: "尽くすほど愛され、財が集まる奉仕の星。",
+    long: "大きな山のように人を包み込む、愛情と奉仕の星です。困っている人を放っておけない世話好きで、見返りを求めずに尽くすことで人望と財が集まってきます。サービス精神が旺盛で、人を惹きつける魅力の持ち主。お金やモノを循環させる『回す』ことで運が開きます。ただし尽くしすぎて疲れたり、お節介になったりしないバランスも大切です。",
+    keywords: ["奉仕", "愛情", "財運", "世話好き", "魅力"],
+  },
+  司禄星: {
+    yomi: "しろくせい",
+    group: "引力本能",
+    element: "陰の土（田畑）",
+    short: "コツコツ積み上げる、堅実な蓄財の星。",
+    long: "豊かに実る田畑のような、堅実で誠実な星です。日々の小さな積み重ねを大切にし、地道な努力で着実に財産や信頼を蓄えていきます。家庭的で真面目、安定を好む現実派。派手さはありませんが、コツコツ型の安心感が周囲からの信頼を生みます。貯蓄・記録・管理が得意で、家庭や身近な人を守ることに幸せを感じるタイプです。",
+    keywords: ["堅実", "蓄財", "誠実", "家庭的", "継続"],
+  },
+  車騎星: {
+    yomi: "しゃきせい",
+    group: "攻撃本能",
+    element: "陽の金（刀・武器）",
+    short: "まっすぐ突き進む、行動とスピードの星。",
+    long: "鋭く磨かれた刀のような、行動力とスピードの星です。考えるより先に体が動く、正義感の強い猪突猛進タイプ。物事を白黒はっきりさせたがり、曲がったことが大嫌い。じっとしているのが苦手で、汗をかいて働くこと・体を動かすことで運が開きます。短気な面もありますが、さっぱりして後を引かない潔さが魅力。営業・スポーツ・現場仕事などで活躍します。",
+    keywords: ["行動力", "正義感", "スピード", "短気", "潔さ"],
+  },
+  牽牛星: {
+    yomi: "けんぎゅうせい",
+    group: "攻撃本能",
+    element: "陰の金（宝石・装飾品）",
+    short: "プライドと品格を持つ、エリートの星。",
+    long: "磨き抜かれた宝石のような、気品とプライドの星です。責任感が強く真面目で、肩書きや名誉を重んじるエリート気質。常にきちんとしていたい美意識を持ち、公的な場やフォーマルな環境でこそ力を発揮します。プライドの高さゆえに弱みを見せるのが苦手な一面も。組織の中での昇進や、社会的な信用が求められる仕事と好相性です。",
+    keywords: ["プライド", "品格", "責任感", "名誉", "真面目"],
+  },
+  龍高星: {
+    yomi: "りゅうこうせい",
+    group: "習得本能",
+    element: "陽の水（海・大河）",
+    short: "未知へ挑む、冒険と改革の星。",
+    long: "大海原のようにスケールの大きな、冒険と探究の星です。好奇心が旺盛で、誰も行かない場所・未知の世界に惹かれる開拓者。海外や異文化、新しいことへのチャレンジでぐんぐん成長します。型破りでユニークな発想を持ち、苦労や困難すらも楽しむ忍耐力の持ち主。じっとしているより、放浪・変化・改革の中でこそ才能が輝きます。",
+    keywords: ["冒険", "好奇心", "海外", "改革", "忍耐"],
+  },
+  玉堂星: {
+    yomi: "ぎょくどうせい",
+    group: "習得本能",
+    element: "陰の水（雨・泉）",
+    short: "知性と伝統を愛する、学問の星。",
+    long: "静かに大地を潤す雨のような、知性と伝統の星です。学ぶこと・知識を深めることに喜びを感じる理論派で、冷静沈着な分析力を持ちます。母性や情に厚く、伝統や家庭、ルーツを大切にする保守的な一面も。教えることが得意で、知識を次の世代に伝える役割に向いています。研究・教育・専門職など、じっくり知を積み上げる分野で大きく花開きます。",
+    keywords: ["知性", "学問", "伝統", "冷静", "教育"],
+  },
+};
+
+// --- 十二大従星（じゅうにだいじゅうせい）：エネルギーの星 ---
+const TWELVE_STARS = {
+  天報星: { yomi: "てんぽうせい", age: "胎児", energy: 3, short: "変化を好む、無限の可能性の星。", long: "母のお腹の中の胎児を表す星。まだ形が定まらない『可能性の塊』で、変化や臨機応変さを好みます。多才で器用、いろいろなことに興味を持ちますが飽きっぽい面も。柔軟性が最大の武器です。" },
+  天印星: { yomi: "てんいんせい", age: "赤ちゃん", energy: 6, short: "純粋で愛される、天真爛漫の星。", long: "生まれたての赤ちゃんを表す星。無邪気で素直、誰からも可愛がられ助けられる愛され体質。おっとりしておおらかですが、依存心が出やすい面も。人に守られながら伸びていくタイプです。" },
+  天貴星: { yomi: "てんきせい", age: "幼児", energy: 7, short: "純真でプライド高い、貴公子の星。", long: "幼児期を表す星。純粋で素直、上品な気品を持ちます。期待をかけられて育つ『貴な子』で、繊細でプライドが高い一面も。可愛がられながら才能を伸ばしていきます。" },
+  天恍星: { yomi: "てんこうせい", age: "思春期", energy: 8, short: "夢とロマンを追う、青春の星。", long: "思春期・青年期を表す星。色気や華やかさ、ロマンチストな魅力を持ちます。新しいものや故郷を離れることに惹かれ、夢を追いかける感受性豊かな星。気分の浮き沈みもありますが、人を惹きつける魅力があります。" },
+  天南星: { yomi: "てんなんせい", age: "青年", energy: 9, short: "独立心旺盛な、若さと行動の星。", long: "血気盛んな青年期を表す星。行動力と独立心にあふれ、負けず嫌いで前へ前へと進みます。怖いもの知らずのエネルギッシュさが魅力。短気な面もありますが、若々しい推進力で道を切り開きます。" },
+  天禄星: { yomi: "てんろくせい", age: "壮年", energy: 10, short: "安定と現実を重んじる、働き盛りの星。", long: "働き盛りの壮年期を表す星。地に足のついた現実感覚と安定感を持ち、着実に成果を積み上げます。常識的でバランスが良く、社会の中心で活躍するタイプ。継続と堅実さが信頼を生みます。" },
+  天将星: { yomi: "てんしょうせい", age: "親分・王", energy: 12, short: "最強のエネルギー、頭領の星。", long: "一国の主・王を表す、十二大従星で最強のエネルギーを持つ星。スケールが大きく、人の上に立つ器とカリスマ性を備えます。困難ほど燃えるタフさが魅力。大きな責任を背負うことで真価を発揮しますが、力が強すぎて扱いに注意が必要な面も。" },
+  天堂星: { yomi: "てんどうせい", age: "老人", energy: 5, short: "穏やかで思慮深い、円熟の星。", long: "円熟した老人期を表す星。穏やかで思慮深く、温厚な人格者。先を見通す知恵と落ち着きを持ち、人を導く包容力があります。我を抑えて周囲と調和する、精神的に成熟したタイプです。" },
+  天胡星: { yomi: "てんこせい", age: "病人", energy: 4, short: "繊細で空想的な、夢見る星。", long: "病床にある人を表す星。エネルギーは控えめですが、その分研ぎ澄まされた感性と空想力を持ちます。芸術的センスや専門的な才能に恵まれ、デリケートで神秘的な魅力が。無理せず自分のペースを保つことが大切です。" },
+  天極星: { yomi: "てんきょくせい", age: "死", energy: 2, short: "無欲で献身的な、縁の下の力持ちの星。", long: "肉体の終わりを表す星。自我が薄く、無欲で献身的。人に尽くし、サポート役・補佐役として静かに力を発揮します。受け身に見えて深い精神性を持ち、目立たない場所で組織を支える貴重な存在です。" },
+  天庫星: { yomi: "てんこせい", age: "墓", energy: 4, short: "探究心とこだわりの、伝承の星。", long: "墓・蔵を表す星。物事を貯め込み、究めようとする探究心とこだわりを持ちます。ご先祖や伝統を大切にし、研究やコレクションに没頭するタイプ。一度ハマると深く掘り下げる集中力が魅力です。" },
+  天馳星: { yomi: "てんそうせい", age: "魂", energy: 1, short: "スピードと霊感の、神秘の星。", long: "肉体を離れた魂を表す星。エネルギーは最も小さいですが、その分スピード感と直感力、霊的な感受性に優れます。忙しく動き回り、いくつものことを同時にこなす器用さも。神秘的でとらえどころのない魅力があります。" },
+  天報星2: { yomi: "てんぽうせい", age: "胎児", energy: 3, short: "", long: "" },
+};
+
+// --- 十二大従星のエネルギー値（人生の充実度）---
+const ENERGY_RANK = {
+  天将星: 12, 天禄星: 10, 天南星: 9, 天恍星: 8, 天貴星: 7,
+  天印星: 6, 天堂星: 5, 天胡星: 4, 天庫星: 4, 天報星: 3, 天極星: 2, 天馳星: 1,
+};
+
+// --- 五本能グループの相性解説 ---
+const HONNO_GROUPS = {
+  守備本能: { stars: ["貫索星", "石門星"], desc: "自分を守り、形を保つ力。意志や人脈を司ります。" },
+  伝達本能: { stars: ["鳳閣星", "調舒星"], desc: "感じたことを外へ表現する力。芸術や言葉を司ります。" },
+  引力本能: { stars: ["禄存星", "司禄星"], desc: "人やお金を惹きつけ、引き寄せる力。愛情や財を司ります。" },
+  攻撃本能: { stars: ["車騎星", "牽牛星"], desc: "外へ向かって攻め、達成する力。行動や名誉を司ります。" },
+  習得本能: { stars: ["龍高星", "玉堂星"], desc: "知識を吸収し、学ぶ力。冒険や学問を司ります。" },
+};
+
+// --- 用語集 ---
+const GLOSSARY = {
+  陰占: "いんせん。生年月日を干支（十干十二支）に変換した、宿命の最も基本となる部分。「目に見えない本質」を表します。",
+  陽占: "ようせん。陰占から導き出される、人体図や星のこと。性格や才能など「目に見える表れ」を表します。",
+  人体図: "じんたいず。10種類の星を人体の各部位（頭・胸・腹・右手・左手・右足・左足など）に配置した図。性格・才能・対人関係を一目で読み取れる、算命学の中心となる図です。",
+  十大主星: "じゅうだいしゅせい。性格や才能を表す10種類の星。人体図の中心5マスに配置されます。",
+  十二大従星: "じゅうにだいじゅうせい。人生のエネルギーの強さや、生命力の流れを表す12種類の星。年代ごとのパワーを示します。",
+  大運: "だいうん。10年ごとに切り替わる運気の大きな流れ。人生の『季節』のようなもので、その時期のテーマを表します。",
+  天中殺: "てんちゅうさつ。天の運気が巡ってこない『充電期間』。この時期は無理な勝負を避け、種まきや準備に充てると良いとされます。空亡（くうぼう）とも呼びます。",
+  十干: "じっかん。甲乙丙丁戊己庚辛壬癸の10種類。自然界のエネルギーを表します。",
+  十二支: "じゅうにし。子丑寅卯辰巳午未申酉戌亥の12種類。おなじみの干支の動物です。",
+  本能: "ほんのう。算命学では人の心の働きを5つの本能（守備・伝達・引力・攻撃・習得）に分類します。",
+};
+
+// 人体図の配置（朱学院方式：中央5星＋四隅は従星）
+// 配置: [北西, 北(頭), 北東 / 西(右手), 中央(胸), 東(左手) / 南西, 南(腹/足), 南東]
+const BODY_POSITIONS = [
+  { key: "head", label: "頭（精神・目上）", row: 0, col: 1 },
+  { key: "rightHand", label: "右手（配偶者・部下）", row: 1, col: 0 },
+  { key: "chest", label: "胸（自分自身の核）", row: 1, col: 1, center: true },
+  { key: "leftHand", label: "左手（兄弟・友人）", row: 1, col: 2 },
+  { key: "belly", label: "腹（家庭・子供）", row: 2, col: 1 },
+];
+
+// ============================================================
+// 用語ツールチップ
+// ============================================================
+function Term({ word, children }) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState(null); // {left, top, arrowLeft, placement}
+  const anchorRef = React.useRef(null);
+  const def = GLOSSARY[word];
+
+  // 表示位置を計算（画面内に必ず収まるようクランプ）
+  const computePos = React.useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const margin = 12; // 画面端からの最低マージン
+    const tipW = Math.min(280, vw - margin * 2); // 吹き出し幅（画面が狭ければ縮める）
+    const anchorCenter = rect.left + rect.width / 2;
+
+    // 中央寄せを基本に、左右が画面からはみ出さないようにクランプ
+    let left = anchorCenter - tipW / 2;
+    if (left < margin) left = margin;
+    if (left + tipW > vw - margin) left = vw - margin - tipW;
+
+    // 矢印は実際のアンカー中心を指すように（吹き出し内の相対位置）
+    let arrowLeft = anchorCenter - left;
+    arrowLeft = Math.max(16, Math.min(tipW - 16, arrowLeft));
+
+    // 基本は上に出すが、上に余白がなければ下に出す
+    const placement = rect.top > 160 ? "top" : "bottom";
+    const top = placement === "top" ? rect.top - 8 : rect.bottom + 8;
+
+    setPos({ left, top, width: tipW, arrowLeft, placement });
+  }, []);
+
+  const handleOpen = () => {
+    computePos();
+    setShow(true);
+  };
+  const handleClose = () => setShow(false);
+  const handleToggle = () => {
+    if (show) {
+      setShow(false);
+    } else {
+      computePos();
+      setShow(true);
+    }
+  };
+
+  // 開いている間にスクロール／リサイズされたら位置を追従、画面外タップで閉じる
+  React.useEffect(() => {
+    if (!show) return;
+    const reposition = () => computePos();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [show, computePos]);
+
+  return (
+    <span
+      ref={anchorRef}
+      style={{ position: "relative", display: "inline" }}
+      onMouseEnter={handleOpen}
+      onMouseLeave={handleClose}
+      onClick={handleToggle}
+    >
+      <span
+        style={{
+          borderBottom: "1.5px dotted #b03a2e",
+          cursor: "help",
+          color: "#8b2e22",
+        }}
+      >
+        {children || word}
+      </span>
+      {show && def && pos && (
+        <span
+          style={{
+            position: "fixed",
+            left: pos.left + "px",
+            top: pos.top + "px",
+            transform: pos.placement === "top" ? "translateY(-100%)" : "none",
+            width: pos.width + "px",
+            background: "#2b2420",
+            color: "#f4ecd8",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            fontSize: "12.5px",
+            lineHeight: "1.7",
+            zIndex: 9999,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            fontWeight: "normal",
+            textAlign: "left",
+            letterSpacing: "0.02em",
+            pointerEvents: "none",
+          }}
+        >
+          {def}
+          {/* 矢印（アンカーを指す三角） */}
+          <span
+            style={{
+              position: "absolute",
+              left: pos.arrowLeft + "px",
+              transform: "translateX(-50%)",
+              [pos.placement === "top" ? "top" : "bottom"]: "100%",
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              [pos.placement === "top" ? "borderTop" : "borderBottom"]:
+                "7px solid #2b2420",
+            }}
+          />
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ============================================================
+// メインコンポーネント
+// ============================================================
+export default function App() {
+  const [tab, setTab] = useState("kantei"); // kantei | gakushu | aisho
+  const [saved, setSaved] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+
+  // 入力state
+  const [name, setName] = useState("");
+  const [birth, setBirth] = useState("");
+  const [tenchusatsu, setTenchusatsu] = useState("");
+  // 人体図の5星
+  const [body, setBody] = useState({
+    head: "禄存星",
+    rightHand: "鳳閣星",
+    chest: "玉堂星",
+    leftHand: "天恍星",
+    belly: "貫索星",
+  });
+  // 大運（最大8行）
+  const [daiun, setDaiun] = useState([
+    { age: "2", kanshi: "庚辰", main: "石門星", follow: "天庫星" },
+    { age: "12", kanshi: "己卯", main: "龍高星", follow: "天馳星" },
+    { age: "22", kanshi: "戊寅", main: "玉堂星", follow: "天報星" },
+    { age: "32", kanshi: "丁丑", main: "車騎星", follow: "天印星" },
+    { age: "42", kanshi: "丙子", main: "牽牛星", follow: "天貴星" },
+  ]);
+  const [result, setResult] = useState(null);
+
+  // --- 保存データの読み込み ---
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get("sanmei:profile");
+        if (r && r.value) {
+          const d = JSON.parse(r.value);
+          setSaved(d);
+          if (d.name) setName(d.name);
+          if (d.birth) setBirth(d.birth);
+          if (d.tenchusatsu) setTenchusatsu(d.tenchusatsu);
+          if (d.body) setBody(d.body);
+          if (d.daiun) setDaiun(d.daiun);
+          if (d.result) setResult(d.result);
+        }
+      } catch (e) {
+        // 未保存
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    const data = { name, birth, tenchusatsu, body, daiun, result };
+    try {
+      await window.storage.set("sanmei:profile", JSON.stringify(data));
+      setSaved(data);
+      alert("鑑定結果を保存しました。次回開いたときに自動で読み込まれます。");
+    } catch (e) {
+      alert("保存に失敗しました。");
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm("保存データを消去しますか？")) return;
+    try {
+      await window.storage.delete("sanmei:profile");
+    } catch (e) {}
+    setSaved(null);
+  };
+
+  const runKantei = () => {
+    setResult({ name, birth, tenchusatsu, body: { ...body }, daiun: [...daiun] });
+    window.scrollTo({ top: 9999, behavior: "smooth" });
+  };
+
+  const updateDaiun = (i, field, val) => {
+    setDaiun((d) => d.map((row, idx) => (idx === i ? { ...row, [field]: val } : row)));
+  };
+  const addDaiun = () => setDaiun((d) => [...d, { age: "", kanshi: "", main: "貫索星", follow: "天禄星" }]);
+  const removeDaiun = (i) => setDaiun((d) => d.filter((_, idx) => idx !== i));
+
+  return (
+    <div style={S.page}>
+      <style>{globalCSS}</style>
+
+      {/* ヘッダー */}
+      <header style={S.header}>
+        <div style={S.headerInner}>
+          <div style={S.seal}>算<br/>命</div>
+          <div>
+            <h1 style={S.title}>算命学 鑑定 ＆ 学習ノート</h1>
+            <p style={S.subtitle}>計算済みの結果を入力して、宿命をひもとく</p>
+          </div>
+        </div>
+      </header>
+
+      {/* タブ */}
+      <nav style={S.tabs}>
+        {[
+          ["kantei", "鑑定"],
+          ["gakushu", "星を学ぶ"],
+          ["aisho", "相性"],
+          ["nenun", "時期をみる"],
+        ].map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            style={{ ...S.tab, ...(tab === k ? S.tabActive : {}) }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <main style={S.main}>
+        {tab === "kantei" && (
+          <KanteiTab
+            {...{ name, setName, birth, setBirth, tenchusatsu, setTenchusatsu,
+              body, setBody, daiun, updateDaiun, addDaiun, removeDaiun,
+              runKantei, result, handleSave, handleReset, saved }}
+          />
+        )}
+        {tab === "gakushu" && <GakushuTab />}
+        {tab === "aisho" && <AishoTab />}
+        {tab === "nenun" && <NenunTab birth={birth} setBirth={setBirth} tenchusatsu={tenchusatsu} setTenchusatsu={setTenchusatsu} daiun={daiun} />}
+      </main>
+
+      <footer style={S.footer}>
+        <p style={{ margin: 0 }}>
+          ※ このツールは計算機能を持ちません。
+          <a href="https://www.shugakuin.co.jp/fate_calculation" target="_blank" rel="noreferrer" style={S.link}>朱学院の無料算出ページ</a>
+          などで算出した結果を入力してお使いください。
+        </p>
+        <p style={{ margin: "6px 0 0", opacity: 0.7 }}>占いは人生を楽しむためのもの。最後はご自身の意志で。</p>
+      </footer>
+    </div>
+  );
+}
+
+// ============================================================
+// 鑑定タブ
+// ============================================================
+function KanteiTab(props) {
+  const { name, setName, birth, setBirth, tenchusatsu, setTenchusatsu,
+    body, setBody, daiun, updateDaiun, addDaiun, removeDaiun,
+    runKantei, result, handleSave, handleReset, saved } = props;
+
+  const starOptions = Object.keys(TEN_STARS);
+  const followOptions = Object.keys(ENERGY_RANK);
+
+  return (
+    <div>
+      <Card title="① 基本情報を入力" step>
+        <div style={S.formRow}>
+          <label style={S.label}>お名前（任意）</label>
+          <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：太郎" />
+        </div>
+        <div style={S.formRow}>
+          <label style={S.label}>生年月日（任意）</label>
+          <input style={S.input} value={birth} onChange={(e) => setBirth(e.target.value)} placeholder="例：1995年5月10日" />
+        </div>
+        <div style={S.formRow}>
+          <label style={S.label}><Term word="天中殺">天中殺</Term></label>
+          <select style={S.input} value={tenchusatsu} onChange={(e) => setTenchusatsu(e.target.value)}>
+            <option value="">選択してください</option>
+            {["子丑","寅卯","辰巳","午未","申酉","戌亥"].map((t) => (
+              <option key={t} value={t}>{t}天中殺</option>
+            ))}
+          </select>
+        </div>
+      </Card>
+
+      <Card title="② 人体図の星を入力" step>
+        <p style={S.help}>
+          算出結果の<Term word="人体図">人体図</Term>に書かれている
+          <Term word="十大主星">十大主星</Term>を、対応する位置に選んでください。
+        </p>
+        <div style={S.bodyInputGrid}>
+          {BODY_POSITIONS.map((pos) => (
+            <div key={pos.key} style={S.bodyInputCell}>
+              <span style={S.bodyInputLabel}>{pos.label}</span>
+              <select
+                style={{ ...S.input, marginTop: 4 }}
+                value={body[pos.key]}
+                onChange={(e) => setBody({ ...body, [pos.key]: e.target.value })}
+              >
+                {starOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="③ 大運（年齢ごとの運気）を入力" step>
+        <p style={S.help}>
+          <Term word="大運">大運</Term>の表を上から入力してください。不要な行は「×」で削除できます。
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={S.inputTable}>
+            <thead>
+              <tr>
+                <th style={S.th}>年齢</th><th style={S.th}>干支</th>
+                <th style={S.th}>主星</th><th style={S.th}>従星</th><th style={S.th}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {daiun.map((row, i) => (
+                <tr key={i}>
+                  <td style={S.td}><input style={S.tdInput} value={row.age} onChange={(e) => updateDaiun(i, "age", e.target.value)} /></td>
+                  <td style={S.td}><input style={S.tdInput} value={row.kanshi} onChange={(e) => updateDaiun(i, "kanshi", e.target.value)} /></td>
+                  <td style={S.td}>
+                    <select style={S.tdInput} value={row.main} onChange={(e) => updateDaiun(i, "main", e.target.value)}>
+                      {starOptions.map((s) => <option key={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td style={S.td}>
+                    <select style={S.tdInput} value={row.follow} onChange={(e) => updateDaiun(i, "follow", e.target.value)}>
+                      {followOptions.map((s) => <option key={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td style={S.td}>
+                    <button style={S.delBtn} onClick={() => removeDaiun(i)}>×</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button style={S.addBtn} onClick={addDaiun}>＋ 行を追加</button>
+      </Card>
+
+      <div style={S.btnRow}>
+        <button style={S.primaryBtn} onClick={runKantei}>この内容で鑑定する</button>
+      </div>
+
+      {result && (
+        <>
+          <ResultView result={result} />
+          <div style={S.btnRow}>
+            <button style={S.saveBtn} onClick={handleSave}>結果を保存する</button>
+            {saved && <button style={S.resetBtn} onClick={handleReset}>保存データを消去</button>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// 鑑定結果ビュー
+// ============================================================
+function ResultView({ result }) {
+  const { name, birth, tenchusatsu, body, daiun } = result;
+  const centerStar = body.chest;
+
+  // 本能バランス集計
+  const honnoCount = {};
+  Object.values(body).forEach((star) => {
+    for (const [g, info] of Object.entries(HONNO_GROUPS)) {
+      if (info.stars.includes(star)) honnoCount[g] = (honnoCount[g] || 0) + 1;
+    }
+  });
+
+  return (
+    <div style={S.resultWrap} id="result">
+      <div style={S.resultHeader}>
+        <span style={S.resultBadge}>鑑定結果</span>
+        <h2 style={S.resultName}>{name || "あなた"}さんの宿命</h2>
+        {birth && <p style={S.resultBirth}>{birth}</p>}
+      </div>
+
+      {/* 人体図 */}
+      <section>
+        <h3 style={S.sectionTitle}>◆ 人体図</h3>
+        <p style={S.help}>体の各部位に星を配置した図です。中央の「胸」があなたの中心となる本質です。</p>
+        <BodyChart body={body} />
+      </section>
+
+      {/* 中心星の解説 */}
+      <section>
+        <h3 style={S.sectionTitle}>◆ あなたの中心の星：{centerStar}</h3>
+        <StarDetail name={centerStar} highlight />
+      </section>
+
+      {/* 各部位の星 */}
+      <section>
+        <h3 style={S.sectionTitle}>◆ それぞれの場所の星</h3>
+        <div style={S.starList}>
+          {BODY_POSITIONS.filter((p) => !p.center).map((pos) => (
+            <div key={pos.key} style={S.starListItem}>
+              <div style={S.starListLabel}>{pos.label}</div>
+              <StarDetail name={body[pos.key]} compact />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 本能バランス */}
+      <section>
+        <h3 style={S.sectionTitle}>◆ あなたの本能バランス</h3>
+        <p style={S.help}>
+          算命学では心の働きを5つの<Term word="本能">本能</Term>に分けます。
+          あなたの星がどの本能に偏っているかで、性質の傾向がわかります。
+        </p>
+        <div style={S.honnoBars}>
+          {Object.entries(HONNO_GROUPS).map(([g, info]) => {
+            const c = honnoCount[g] || 0;
+            return (
+              <div key={g} style={S.honnoBarRow}>
+                <span style={S.honnoBarLabel}>{g}</span>
+                <div style={S.honnoBarTrack}>
+                  <div style={{ ...S.honnoBarFill, width: `${(c / 5) * 100}%`, opacity: c ? 1 : 0.15 }} />
+                </div>
+                <span style={S.honnoBarCount}>{c}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p style={S.honnoNote}>
+          {(() => {
+            const top = Object.entries(honnoCount).sort((a, b) => b[1] - a[1])[0];
+            if (!top) return "";
+            return `あなたは「${top[0]}」の星が多めです。${HONNO_GROUPS[top[0]].desc}この力を活かす生き方が、あなたらしさにつながります。`;
+          })()}
+        </p>
+      </section>
+
+      {/* 天中殺 */}
+      {tenchusatsu && (
+        <section>
+          <h3 style={S.sectionTitle}>◆ 天中殺：{tenchusatsu}天中殺</h3>
+          <TenchusatsuDetail type={tenchusatsu} />
+        </section>
+      )}
+
+      {/* 大運 */}
+      <section>
+        <h3 style={S.sectionTitle}>◆ 大運 ― 人生の運気の流れ</h3>
+        <p style={S.help}>
+          <Term word="大運">大運</Term>は10年ごとに変わる運気の季節です。
+          各時期の「主星（テーマ）」と「従星（エネルギー量）」を解説します。
+        </p>
+        <DaiunFlow daiun={daiun} />
+      </section>
+    </div>
+  );
+}
+
+// ============================================================
+// 人体図（図表示）
+// ============================================================
+function BodyChart({ body }) {
+  const cell = (pos) => {
+    const star = body[pos.key];
+    const info = TEN_STARS[star];
+    return (
+      <div
+        key={pos.key}
+        style={{
+          ...S.chartCell,
+          ...(pos.center ? S.chartCenter : {}),
+          gridRow: pos.row + 1,
+          gridColumn: pos.col + 1,
+        }}
+      >
+        <div style={S.chartPos}>{pos.label.split("（")[0]}</div>
+        <div style={{ ...S.chartStar, ...(pos.center ? S.chartStarCenter : {}) }}>{star}</div>
+        <div style={S.chartYomi}>{info?.yomi}</div>
+      </div>
+    );
+  };
+  return (
+    <div style={S.chartGrid}>
+      {BODY_POSITIONS.map(cell)}
+      {/* 装飾の空セル */}
+      <div style={{ ...S.chartEmpty, gridRow: 1, gridColumn: 1 }} />
+      <div style={{ ...S.chartEmpty, gridRow: 1, gridColumn: 3 }} />
+      <div style={{ ...S.chartEmpty, gridRow: 3, gridColumn: 1 }} />
+      <div style={{ ...S.chartEmpty, gridRow: 3, gridColumn: 3 }} />
+    </div>
+  );
+}
+
+// ============================================================
+// 星の詳細
+// ============================================================
+function StarDetail({ name, highlight, compact }) {
+  const info = TEN_STARS[name];
+  if (!info) return null;
+  return (
+    <div style={{ ...S.starDetail, ...(highlight ? S.starDetailHi : {}) }}>
+      <div style={S.starDetailHead}>
+        <span style={S.starDetailName}>{name}</span>
+        <span style={S.starDetailYomi}>{info.yomi}</span>
+        <span style={S.starDetailGroup}>{info.group} / {info.element}</span>
+      </div>
+      <p style={S.starShort}>{info.short}</p>
+      {!compact && <p style={S.starLong}>{info.long}</p>}
+      <div style={S.tagRow}>
+        {info.keywords.map((k) => <span key={k} style={S.tag}>{k}</span>)}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 天中殺の詳細
+// ============================================================
+const TENCHU_DATA = {
+  子丑: "幼少期や家庭、目上との縁が薄くなりやすい天中殺。早くから自立する傾向があります。物事を始めるより、まとめ・引き継ぐ役割で力を発揮。冬の静けさのように、内に力を蓄える時期を大切に。",
+  寅卯: "兄弟・友人・横のつながりに課題が出やすい天中殺。社会的な広がりを求めますが、組織より個人で動くと吉。春の芽吹きのエネルギーで、新しい分野を開拓する力があります。",
+  辰巳: "現実よりも精神世界・理想に力を持つ天中殺。物質的な欲を追うより、哲学・宗教・創造の分野で輝きます。地に足をつけつつ、夢やビジョンを大切にする生き方が運を開きます。",
+  午未: "目下・子供・後輩との縁に課題が出やすい天中殺。世話役・教育役で苦労もありますが、与えることで徳が積まれます。夏の盛りのように、エネルギーを発散して生きると良いでしょう。",
+  申酉: "家庭・住まい・安定した基盤に課題が出やすい天中殺。一か所に留まるより、変化や移動の多い生き方が合います。秋の実りのように、経験を結実させる晩成型の傾向があります。",
+  戌亥: "社会・公的な場との縁に独特の課題を持つ天中殺。世間の常識にとらわれない自由な発想を持ち、精神性や独創性で勝負すると吉。『天』とのつながりが強く、直感力に優れます。",
+};
+function TenchusatsuDetail({ type }) {
+  return (
+    <div style={S.tenchuBox}>
+      <p style={{ margin: "0 0 10px", fontSize: 13.5, lineHeight: 1.9 }}>{TENCHU_DATA[type]}</p>
+      <p style={{ margin: 0, fontSize: 12.5, opacity: 0.85, lineHeight: 1.8 }}>
+        ※ 天中殺は「悪い時期」ではなく、運気の<Term word="天中殺">充電期間</Term>。
+        この時期は大きな勝負を避け、学びや準備、人とのご縁を育てることに使うと、後の飛躍につながります。
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
+// 大運の流れ
+// ============================================================
+function DaiunFlow({ daiun }) {
+  return (
+    <div style={S.daiunFlow}>
+      {daiun.map((row, i) => {
+        const main = TEN_STARS[row.main];
+        const follow = TWELVE_STARS[row.follow];
+        const energy = ENERGY_RANK[row.follow] || 0;
+        return (
+          <div key={i} style={S.daiunCard}>
+            <div style={S.daiunAge}>
+              <span style={S.daiunAgeNum}>{row.age}</span>
+              <span style={S.daiunAgeUnit}>歳〜</span>
+            </div>
+            <div style={S.daiunBody}>
+              <div style={S.daiunStars}>
+                <span style={S.daiunKanshi}>{row.kanshi}</span>
+                <span style={S.daiunMain}>{row.main}</span>
+                <span style={S.daiunFollow}>{row.follow}</span>
+              </div>
+              {main && <p style={S.daiunDesc}><b>テーマ：</b>{main.short}</p>}
+              {follow && (
+                <p style={S.daiunDesc}>
+                  <b>活力：</b>{follow.short}
+                  <span style={S.energyBar}>
+                    <span style={{ ...S.energyFill, width: `${(energy / 12) * 100}%` }} />
+                  </span>
+                  <span style={S.energyNum}>エネルギー {energy}/12</span>
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================
+// 学習タブ
+// ============================================================
+function GakushuTab() {
+  const [open, setOpen] = useState(null);
+  return (
+    <div>
+      <Card title="算命学とは？">
+        <p style={S.proseP}>
+          算命学（さんめいがく）は、古代中国で生まれた<b>運命学</b>です。
+          生年月日を<Term word="十干">十干</Term>と<Term word="十二支">十二支</Term>という記号に置き換え、
+          そこから人の性格・才能・運勢の流れを読み解きます。
+        </p>
+        <p style={S.proseP}>
+          大きく2つの見方があります。生年月日を干支に変換した本質の部分を
+          <Term word="陰占">陰占</Term>、そこから導く性格や才能の星を
+          <Term word="陽占">陽占</Term>と呼びます。このツールで扱う
+          <Term word="人体図">人体図</Term>は陽占にあたります。
+        </p>
+      </Card>
+
+      <Card title="十大主星 ― 性格・才能の10の星">
+        <p style={S.help}>
+          <Term word="十大主星">十大主星</Term>は、性格や才能を表す星です。
+          下の星をタップすると詳しい解説が開きます。
+        </p>
+        {Object.entries(HONNO_GROUPS).map(([g, info]) => (
+          <div key={g} style={{ marginBottom: 18 }}>
+            <div style={S.groupHead}>{g} <span style={S.groupDesc}>{info.desc}</span></div>
+            {info.stars.map((s) => (
+              <Accordion key={s} title={s} sub={TEN_STARS[s].yomi} open={open === s} onClick={() => setOpen(open === s ? null : s)}>
+                <StarDetail name={s} />
+              </Accordion>
+            ))}
+          </div>
+        ))}
+      </Card>
+
+      <Card title="十二大従星 ― 生命力の12の星">
+        <p style={S.help}>
+          <Term word="十二大従星">十二大従星</Term>は、人生のエネルギーの強さを表す星です。
+          人の一生（胎児→赤ちゃん→…→死→魂）になぞらえられ、それぞれエネルギー値が違います。
+        </p>
+        {Object.entries(ENERGY_RANK)
+          .sort((a, b) => b[1] - a[1])
+          .map(([s, e]) => {
+            const info = TWELVE_STARS[s];
+            return (
+              <div key={s} style={S.followRow}>
+                <div style={S.followName}>
+                  <b>{s}</b>
+                  <span style={S.followYomi}>{info?.yomi}・{info?.age}</span>
+                </div>
+                <div style={S.followBarTrack}>
+                  <div style={{ ...S.followBarFill, width: `${(e / 12) * 100}%` }} />
+                </div>
+                <span style={S.followEnergy}>{e}</span>
+                <p style={S.followDesc}>{info?.short}</p>
+              </div>
+            );
+          })}
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// 相性・組合せタブ
+// ============================================================
+function AishoTab() {
+  const stars = Object.keys(TEN_STARS);
+  const [a, setA] = useState("玉堂星");
+  const [b, setB] = useState("禄存星");
+
+  const groupOf = (s) => {
+    for (const [g, info] of Object.entries(HONNO_GROUPS)) if (info.stars.includes(s)) return g;
+  };
+  // 五行の相生・相剋による簡易相性判定
+  const ORDER = ["守備本能", "伝達本能", "引力本能", "攻撃本能", "習得本能"];
+  const ga = groupOf(a), gb = groupOf(b);
+  const ia = ORDER.indexOf(ga), ib = ORDER.indexOf(gb);
+  let relation, relColor, relDesc;
+  if (a === b) {
+    relation = "同じ星"; relColor = "#7a8b3a";
+    relDesc = "同じ星を持つ者同士。価値観が似ていて居心地は良い反面、似すぎてぶつかることも。鏡のように互いを映し合う関係です。";
+  } else if (ga === gb) {
+    relation = "同じ本能（仲間）"; relColor = "#7a8b3a";
+    relDesc = `どちらも「${ga}」の星。根っこの価値観が近く、自然と理解し合える相性です。協力すると大きな力になります。`;
+  } else if ((ia + 1) % 5 === ib) {
+    relation = "相生（あなたが相手を活かす）"; relColor = "#b8860b";
+    relDesc = `「${ga}」は「${gb}」を生み育てる関係（相生）。あなたが相手を応援し、力を引き出す側になります。与える愛情が循環する良縁です。`;
+  } else if ((ib + 1) % 5 === ia) {
+    relation = "相生（相手があなたを活かす）"; relColor = "#b8860b";
+    relDesc = `「${gb}」は「${ga}」を生み育てる関係（相生）。相手があなたを支え、伸ばしてくれます。甘えすぎず感謝を忘れずに。`;
+  } else {
+    relation = "相剋（刺激し合う）"; relColor = "#b03a2e";
+    relDesc = `お互いを律し、緊張感を生む関係（相剋）。ぶつかりやすいですが、その刺激が成長を促すことも。違いを尊重できれば、最高の好敵手・パートナーになります。`;
+  }
+
+  return (
+    <div>
+      <Card title="星の組み合わせ・相性を見る">
+        <p style={S.help}>
+          2つの<Term word="十大主星">十大主星</Term>を選ぶと、
+          <Term word="本能">本能</Term>の<b>五行（ごぎょう）</b>の関係から相性を解説します。
+          自分と相手の「胸（中心）の星」で見るのが基本です。
+        </p>
+        <div style={S.aishoSelectRow}>
+          <select style={S.aishoSelect} value={a} onChange={(e) => setA(e.target.value)}>
+            {stars.map((s) => <option key={s}>{s}</option>)}
+          </select>
+          <span style={S.aishoVs}>×</span>
+          <select style={S.aishoSelect} value={b} onChange={(e) => setB(e.target.value)}>
+            {stars.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div style={{ ...S.aishoResult, borderColor: relColor }}>
+          <div style={{ ...S.aishoRelation, color: relColor }}>{relation}</div>
+          <p style={S.aishoDesc}>{relDesc}</p>
+        </div>
+
+        <div style={S.aishoStars}>
+          <StarDetail name={a} compact />
+          <StarDetail name={b} compact />
+        </div>
+      </Card>
+
+      <Card title="五行の相性ってなに？">
+        <p style={S.proseP}>
+          算命学のベースには<b>五行（ごぎょう）</b>という考え方があります。
+          世界は「木・火・土・金・水」の5つのエネルギーでできているという東洋哲学です。
+          これが5つの<Term word="本能">本能</Term>に対応しています。
+        </p>
+        <p style={S.proseP}>
+          5つには2種類の関係があります。<br/>
+          <b>・相生（そうじょう）</b>＝生み育てる、助け合う良い関係（例：木は燃えて火を生む）<br/>
+          <b>・相剋（そうこく）</b>＝抑え合う、刺激し合う関係（例：水は火を消す）
+        </p>
+        <p style={S.proseP}>
+          相生は穏やかで安定し、相剋は緊張感がありますが成長を促します。
+          どちらが良い・悪いではなく、関係の<b>質の違い</b>と捉えるのが算命学の面白いところです。
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// 年運（時期）タブ ― データ＆計算
+// ============================================================
+
+// 十干・十二支（暦で固定。計算がズレない部分）
+const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+const STEM_YOMI = { 甲: "きのえ", 乙: "きのと", 丙: "ひのえ", 丁: "ひのと", 戊: "つちのえ", 己: "つちのと", 庚: "かのえ", 辛: "かのと", 壬: "みずのえ", 癸: "みずのと" };
+const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+const BRANCH_YOMI = { 子: "ね", 丑: "うし", 寅: "とら", 卯: "う", 辰: "たつ", 巳: "み", 午: "うま", 未: "ひつじ", 申: "さる", 酉: "とり", 戌: "いぬ", 亥: "い" };
+
+// 天中殺ペア（その2支がその人の充電期間）
+const TENCHU_PAIRS = {
+  子丑: ["子", "丑"], 寅卯: ["寅", "卯"], 辰巳: ["辰", "巳"],
+  午未: ["午", "未"], 申酉: ["申", "酉"], 戌亥: ["戌", "亥"],
+};
+
+// 年の干支を計算（西暦→干支）。立春前は注意（後述の注記で補足）
+function yearGanshi(year) {
+  const sIdx = ((year - 4) % 10 + 10) % 10;
+  const bIdx = ((year - 4) % 12 + 12) % 12;
+  const stem = STEMS[sIdx];
+  const branch = BRANCHES[bIdx];
+  return { stem, branch, text: stem + branch };
+}
+
+// 十二支ごとの一般的な「その年の気質」（干支暦のイメージ。個人の宿命とは別の全体運）
+const BRANCH_THEME = {
+  子: { season: "冬の始まり", word: "種まき・スタート", desc: "新しいサイクルの始まり。表には見えないところで物事が動き出す、仕込み・準備の年。" },
+  丑: { season: "晩冬", word: "耐える・育てる", desc: "じっと耐えて力を蓄える年。地道な努力が後で芽吹く、我慢と土台づくりの時期。" },
+  寅: { season: "早春", word: "動き出す・発芽", desc: "蓄えた力が動き出す年。新しいことを始める・行動に移すのに勢いがつく時期。" },
+  卯: { season: "春", word: "成長・伸びる", desc: "芽が伸びるように物事が育つ年。広がり・成長・人間関係の発展が期待できる時期。" },
+  辰: { season: "晩春", word: "変化・うねり", desc: "大きく動き変化する年。波が立ちやすく、飛躍もあればブレもある、ダイナミックな時期。" },
+  巳: { season: "初夏", word: "充実・知恵", desc: "内面が充実し知恵が冴える年。じっくり考え、内なる力を高めるのに向く時期。" },
+  午: { season: "夏（盛り）", word: "最高潮・発展", desc: "エネルギーが最高潮に達する年。活発に表に出て、勝負・発展に向く明るい時期。" },
+  未: { season: "晩夏", word: "成熟・調整", desc: "盛りを過ぎ成熟へ向かう年。まとめ・調整・人との和を大切にすると良い時期。" },
+  申: { season: "初秋", word: "展開・実りへ", desc: "実りへ向けて物事が展開する年。器用に立ち回り、成果につなげていく時期。" },
+  酉: { season: "秋", word: "収穫・完成", desc: "努力が形になる収穫の年。結果が出る・仕上げる・けじめをつけるのに向く時期。" },
+  戌: { season: "晩秋", word: "締めくくり・整理", desc: "一区切りつける年。守りを固め、整理し、次に備えて身辺を整える時期。" },
+  亥: { season: "冬", word: "蓄える・休息", desc: "サイクルの終わりに力を蓄える年。休息・充電し、次の始まりに備える時期。" },
+};
+
+// 天中殺の年の読み（その人にとって最も確実に読める部分）
+function nenunReading(year, tenchusatsu) {
+  const { branch } = yearGanshi(year);
+  const pair = TENCHU_PAIRS[tenchusatsu];
+  const theme = BRANCH_THEME[branch];
+  if (pair) {
+    if (branch === pair[0]) {
+      return {
+        type: "tenchu1",
+        label: "天中殺 1年目",
+        color: "#b03a2e",
+        text: "あなたの天中殺の1年目。運気の充電期間に入ります。新しいことを始めたり、大きな決断をするより、これまでの整理・学び直し・人とのご縁を育てることに使うと吉。焦らず、流れに逆らわないのがコツです。",
+      };
+    }
+    if (branch === pair[1]) {
+      return {
+        type: "tenchu2",
+        label: "天中殺 2年目",
+        color: "#b03a2e",
+        text: "天中殺の2年目（最終年）。引き続き種まき・準備の時期です。結婚・転職・独立・引っ越し・大きな契約などの『人生の方向を変える決断』は、できればこの時期を避けるか、慎重に。ここで耐えたぶん、明けてから動きやすくなります。",
+      };
+    }
+    // 天中殺明け（2年目の次の支）
+    const after = BRANCHES[(BRANCHES.indexOf(pair[1]) + 1) % 12];
+    if (branch === after) {
+      return {
+        type: "ake",
+        label: "天中殺 明け 🌅",
+        color: "#6b7a35",
+        text: "天中殺が明けた最初の年。長い充電期間を抜け、新しいサイクルがスタートします。仕切り直し・再スタート・新しい挑戦に向く、追い風の年。天中殺中に温めてきたことを、ここから形にしていきましょう。",
+      };
+    }
+  }
+  return {
+    type: "normal",
+    label: theme.word,
+    color: "#a8862c",
+    text: theme.desc,
+  };
+}
+
+// ============================================================
+// 年運（時期）タブ ― コンポーネント
+// ============================================================
+function NenunTab({ birth, setBirth, tenchusatsu, setTenchusatsu, daiun }) {
+  const thisYear = new Date().getFullYear();
+  // 生年を birth 文字列から推定（なければ空）
+  const guessedYear = (() => {
+    const m = (birth || "").match(/(\d{4})/);
+    return m ? parseInt(m[1], 10) : "";
+  })();
+  const [birthYear, setBirthYear] = useState(guessedYear || "");
+  const [selYear, setSelYear] = useState(thisYear);
+
+  const hasTenchu = !!TENCHU_PAIRS[tenchusatsu];
+  const age = birthYear ? thisYear - parseInt(birthYear, 10) : null;
+
+  // 選択年の鑑定
+  const gs = yearGanshi(selYear);
+  const reading = nenunReading(selYear, tenchusatsu);
+  const theme = BRANCH_THEME[gs.branch];
+
+  // タイムライン（前年〜10年先）
+  const years = [];
+  for (let y = thisYear - 1; y <= thisYear + 10; y++) years.push(y);
+
+  // 現在の大運（年齢から）
+  const currentDaiun = (() => {
+    if (age == null || !daiun || !daiun.length) return null;
+    let cur = null;
+    for (const row of daiun) {
+      const a = parseInt(row.age, 10);
+      if (!isNaN(a) && age >= a) cur = row;
+    }
+    return cur;
+  })();
+
+  return (
+    <div>
+      <Card title="時期をみる ― 年運と天中殺" step>
+        <p style={S.help}>
+          <Term word="大運">大運</Term>が10年の「季節」なら、年運はその年その年の「天気」。
+          ここでは<b>暦で確実に決まる「年の干支」と「天中殺の年」</b>を自動で判定します。
+        </p>
+
+        <div style={S.nenunInputRow}>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>生まれ年（西暦）</label>
+            <input
+              style={S.input}
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="例：1995"
+              inputMode="numeric"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}><Term word="天中殺">天中殺</Term></label>
+            <select style={S.input} value={tenchusatsu} onChange={(e) => setTenchusatsu(e.target.value)}>
+              <option value="">未選択</option>
+              {Object.keys(TENCHU_PAIRS).map((t) => (
+                <option key={t} value={t}>{t}天中殺</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {!hasTenchu && (
+          <p style={S.nenunWarn}>
+            ※ 天中殺を選ぶと、その年があなたの「充電期間」かどうかも判定できます。
+            （鑑定タブで入力した天中殺はここにも反映されます）
+          </p>
+        )}
+
+        {/* 立春の注意 */}
+        <div style={S.rissyunNote}>
+          <b>📌 ひとつだけ注意</b><br />
+          算命学の「1年」は1月1日ではなく<b>立春（2月4日ごろ）から</b>始まります。
+          そのため<b>1月〜2月初旬</b>については、運気の上では前年として扱う場合があります。
+          その時期の判定はこのズレにご注意ください。
+        </div>
+      </Card>
+
+      {/* タイムライン */}
+      <Card title="これからの流れ（年表）">
+        <p style={S.help}>
+          年をタップすると下に詳しい解説が出ます。
+          <span style={{ color: vermillion, fontWeight: 700 }}>赤い年</span>があなたの天中殺、
+          <span style={{ color: moss, fontWeight: 700 }}>緑の年</span>が天中殺明けです。
+        </p>
+        <div style={S.timeline}>
+          {years.map((y) => {
+            const r = nenunReading(y, tenchusatsu);
+            const g = yearGanshi(y);
+            const isSel = y === selYear;
+            const isNow = y === thisYear;
+            let bg = "#fff", bd = `${gold}44`, col = ink;
+            if (r.type === "tenchu1" || r.type === "tenchu2") { bg = `${vermillion}10`; bd = vermillion; col = vermillion; }
+            else if (r.type === "ake") { bg = `${moss}12`; bd = moss; col = moss; }
+            return (
+              <button
+                key={y}
+                onClick={() => setSelYear(y)}
+                style={{
+                  ...S.timeChip,
+                  background: bg,
+                  borderColor: isSel ? ink : bd,
+                  borderWidth: isSel ? 2.5 : 1.5,
+                  color: col,
+                }}
+              >
+                {isNow && <span style={S.timeNow}>今</span>}
+                <span style={S.timeYear}>{y}</span>
+                <span style={S.timeGanshi}>{g.text}</span>
+                {(r.type === "tenchu1" || r.type === "tenchu2") && <span style={S.timeTag}>天中殺</span>}
+                {r.type === "ake" && <span style={{ ...S.timeTag, color: moss }}>明け</span>}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* 選択年の詳細 */}
+      <Card title={`${selYear}年（${gs.text}）の運気`}>
+        <div style={S.nenunDetailHead}>
+          <div style={S.nenunGanshiBox}>
+            <span style={S.nenunGanshiText}>{gs.text}</span>
+            <span style={S.nenunGanshiYomi}>{STEM_YOMI[gs.stem]}・{BRANCH_YOMI[gs.branch]}</span>
+          </div>
+          <div>
+            <span style={{ ...S.nenunBadge, background: reading.color }}>{reading.label}</span>
+            {age != null && (
+              <span style={S.nenunAge}>この年あなたは {selYear - parseInt(birthYear, 10)} 歳</span>
+            )}
+          </div>
+        </div>
+
+        <p style={S.nenunReadingText}>{reading.text}</p>
+
+        {/* 一般的な年の気質（天中殺の年でも参考として表示） */}
+        {theme && reading.type !== "normal" && (
+          <p style={S.nenunSubText}>
+            <b>※ {selYear}年そのものの全体傾向：</b>「{theme.season}」にあたり、{theme.word}の年。{theme.desc}
+          </p>
+        )}
+
+        {/* 大運との重ね合わせ */}
+        {currentDaiun && selYear === thisYear && (
+          <div style={S.nenunDaiun}>
+            <b>🗓 今のあなたの大運（10年の季節）</b><br />
+            {currentDaiun.age}歳〜：<b>{currentDaiun.main}</b> の季節
+            {TEN_STARS[currentDaiun.main] && `（${TEN_STARS[currentDaiun.main].short}）`}
+            <br />
+            <span style={{ fontSize: 12, opacity: 0.85 }}>
+              この「季節」の中で、上の年運という「天気」が移り変わっていくイメージです。
+            </span>
+          </div>
+        )}
+      </Card>
+
+      <Card title="もっと正確に知りたいときは">
+        <p style={S.proseP}>
+          このタブで出している<b>年の干支・天中殺の年</b>は暦で確実に決まるものなので、まずズレません。
+        </p>
+        <p style={S.proseP}>
+          一方で、<b>「その年があなたにとって何の星（主星・従星）の年か」</b>といった細かい年運は、
+          流派や<Term word="十二支">節入り</Term>の計算が絡むため、
+          <a href="https://www.shugakuin.co.jp/fate_calculation" target="_blank" rel="noreferrer" style={S.link}>朱学院の算出ページ</a>
+          など専門の計算結果を使うのが確実です。出てきた星の意味は「星を学ぶ」タブで調べられます。
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+
+// ============================================================
+// 共通UI部品
+// ============================================================
+function Card({ title, children, step }) {
+  return (
+    <section style={S.card}>
+      <h2 style={{ ...S.cardTitle, ...(step ? S.cardTitleStep : {}) }}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Accordion({ title, sub, open, onClick, children }) {
+  return (
+    <div style={S.acc}>
+      <button style={S.accHead} onClick={onClick}>
+        <span><b style={{ fontSize: 16 }}>{title}</b> <span style={{ fontSize: 12, opacity: 0.6 }}>{sub}</span></span>
+        <span style={{ transform: open ? "rotate(45deg)" : "none", transition: "0.2s", fontSize: 18 }}>＋</span>
+      </button>
+      {open && <div style={S.accBody}>{children}</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// スタイル
+// ============================================================
+const ink = "#2b2420";
+const paper = "#f4ecd8";
+const vermillion = "#b03a2e";
+const gold = "#a8862c";
+const moss = "#6b7a35";
+
+const globalCSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  ::selection { background: ${vermillion}; color: ${paper}; }
+  button { font-family: inherit; }
+  select, input { font-family: inherit; }
+`;
+
+const S = {
+  page: {
+    fontFamily: "'Zen Maru Gothic', sans-serif",
+    color: ink,
+    background: `
+      radial-gradient(circle at 20% 10%, rgba(168,134,44,0.06), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(176,58,46,0.05), transparent 40%),
+      ${paper}`,
+    minHeight: "100vh",
+    backgroundColor: paper,
+  },
+  header: {
+    background: `linear-gradient(135deg, ${ink} 0%, #3a302a 100%)`,
+    color: paper,
+    padding: "28px 20px",
+    borderBottom: `4px solid ${gold}`,
+  },
+  headerInner: { maxWidth: 760, margin: "0 auto", display: "flex", alignItems: "center", gap: 18 },
+  seal: {
+    fontFamily: "'Shippori Mincho', serif",
+    background: vermillion, color: paper, fontWeight: 800,
+    width: 56, height: 56, borderRadius: 8, display: "flex",
+    alignItems: "center", justifyContent: "center", fontSize: 20,
+    lineHeight: 1.1, textAlign: "center", flexShrink: 0,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+  },
+  title: { fontFamily: "'Shippori Mincho', serif", margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "0.04em" },
+  subtitle: { margin: "6px 0 0", fontSize: 13, opacity: 0.8, letterSpacing: "0.05em" },
+  tabs: {
+    display: "flex", gap: 0, maxWidth: 760, margin: "0 auto", padding: "0 16px",
+    position: "sticky", top: 0, zIndex: 20, background: paper,
+    borderBottom: `1px solid ${gold}33`,
+  },
+  tab: {
+    flex: 1, padding: "14px 4px", border: "none", background: "transparent",
+    fontSize: 13.5, fontWeight: 700, color: `${ink}88`, cursor: "pointer",
+    borderBottom: "3px solid transparent", transition: "0.2s", whiteSpace: "nowrap",
+  },
+  tabActive: { color: vermillion, borderBottom: `3px solid ${vermillion}` },
+  main: { maxWidth: 760, margin: "0 auto", padding: "24px 16px 40px" },
+  card: {
+    background: "#fffdf7", borderRadius: 14, padding: "22px 20px", marginBottom: 20,
+    boxShadow: "0 2px 16px rgba(43,36,32,0.06)", border: `1px solid ${gold}22`,
+  },
+  cardTitle: {
+    fontFamily: "'Shippori Mincho', serif", fontSize: 18, fontWeight: 700,
+    margin: "0 0 16px", color: ink, letterSpacing: "0.03em",
+    borderLeft: `4px solid ${moss}`, paddingLeft: 12,
+  },
+  cardTitleStep: { borderLeftColor: vermillion },
+  help: { fontSize: 13, lineHeight: 1.9, color: `${ink}cc`, margin: "0 0 16px" },
+  proseP: { fontSize: 14, lineHeight: 2, margin: "0 0 14px" },
+  formRow: { marginBottom: 14 },
+  label: { display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6, color: `${ink}dd` },
+  input: {
+    width: "100%", padding: "10px 12px", fontSize: 15, borderRadius: 8,
+    border: `1.5px solid ${gold}55`, background: "#fff", color: ink, outline: "none",
+  },
+  bodyInputGrid: { display: "grid", gap: 12 },
+  bodyInputCell: { background: `${moss}0d`, padding: "10px 12px", borderRadius: 8 },
+  bodyInputLabel: { fontSize: 12.5, fontWeight: 700, color: moss },
+  inputTable: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  th: { background: `${ink}`, color: paper, padding: "8px 6px", fontSize: 12, fontWeight: 700 },
+  td: { border: `1px solid ${gold}33`, padding: 4 },
+  tdInput: { width: "100%", padding: "6px 8px", fontSize: 13, border: "none", background: "transparent", outline: "none", color: ink },
+  delBtn: { border: "none", background: `${vermillion}15`, color: vermillion, width: 26, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700 },
+  addBtn: {
+    marginTop: 12, padding: "8px 16px", border: `1.5px dashed ${moss}`, background: "transparent",
+    color: moss, borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13,
+  },
+  btnRow: { textAlign: "center", margin: "24px 0" },
+  primaryBtn: {
+    padding: "15px 48px", fontSize: 16, fontWeight: 700, color: paper,
+    background: `linear-gradient(135deg, ${vermillion}, #8b2e22)`, border: "none",
+    borderRadius: 40, cursor: "pointer", letterSpacing: "0.08em",
+    boxShadow: "0 6px 20px rgba(176,58,46,0.3)", fontFamily: "'Shippori Mincho', serif",
+  },
+  saveBtn: {
+    padding: "12px 32px", fontSize: 14, fontWeight: 700, color: ink,
+    background: `${gold}33`, border: `1.5px solid ${gold}`, borderRadius: 30, cursor: "pointer", marginRight: 10,
+  },
+  resetBtn: {
+    padding: "12px 24px", fontSize: 13, color: `${ink}99`, background: "transparent",
+    border: `1px solid ${ink}33`, borderRadius: 30, cursor: "pointer",
+  },
+  // 結果
+  resultWrap: {
+    background: "#fffdf7", borderRadius: 16, padding: "28px 22px", marginTop: 10,
+    border: `2px solid ${gold}44`, boxShadow: "0 8px 32px rgba(43,36,32,0.1)",
+  },
+  resultHeader: { textAlign: "center", marginBottom: 28, paddingBottom: 20, borderBottom: `2px dotted ${gold}66` },
+  resultBadge: {
+    display: "inline-block", background: vermillion, color: paper, fontSize: 11,
+    padding: "4px 16px", borderRadius: 20, letterSpacing: "0.2em", fontWeight: 700,
+  },
+  resultName: { fontFamily: "'Shippori Mincho', serif", fontSize: 24, margin: "12px 0 4px", fontWeight: 800 },
+  resultBirth: { fontSize: 13, color: `${ink}99`, margin: 0 },
+  sectionTitle: {
+    fontFamily: "'Shippori Mincho', serif", fontSize: 17, fontWeight: 700,
+    color: vermillion, margin: "28px 0 12px", letterSpacing: "0.03em",
+  },
+  // 人体図チャート
+  chartGrid: {
+    display: "grid", gridTemplateColumns: "1fr 1.2fr 1fr", gridTemplateRows: "repeat(3, auto)",
+    gap: 8, maxWidth: 420, margin: "0 auto", padding: 12,
+    background: `${ink}06`, borderRadius: 12,
+  },
+  chartCell: {
+    background: "#fff", border: `1.5px solid ${gold}55`, borderRadius: 10,
+    padding: "12px 6px", textAlign: "center", display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center", minHeight: 84,
+  },
+  chartCenter: { background: `linear-gradient(135deg, ${vermillion}, #8b2e22)`, borderColor: vermillion },
+  chartPos: { fontSize: 10.5, color: `${ink}88`, marginBottom: 4 },
+  chartStar: { fontFamily: "'Shippori Mincho', serif", fontSize: 18, fontWeight: 700, color: ink },
+  chartStarCenter: { color: paper, fontSize: 20 },
+  chartYomi: { fontSize: 9.5, color: `${ink}66`, marginTop: 2 },
+  chartEmpty: { minHeight: 0 },
+  // 星詳細
+  starDetail: {
+    background: "#fff", border: `1px solid ${gold}33`, borderRadius: 10,
+    padding: "14px 16px", marginBottom: 10,
+  },
+  starDetailHi: { border: `2px solid ${vermillion}`, background: `${vermillion}06` },
+  starDetailHead: { display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 },
+  starDetailName: { fontFamily: "'Shippori Mincho', serif", fontSize: 19, fontWeight: 700, color: ink },
+  starDetailYomi: { fontSize: 12, color: `${ink}88` },
+  starDetailGroup: { fontSize: 11, color: moss, background: `${moss}15`, padding: "2px 8px", borderRadius: 10, marginLeft: "auto" },
+  starShort: { fontSize: 14, fontWeight: 700, color: vermillion, margin: "0 0 8px", lineHeight: 1.7 },
+  starLong: { fontSize: 13.5, lineHeight: 2, margin: "0 0 10px", color: `${ink}dd` },
+  tagRow: { display: "flex", flexWrap: "wrap", gap: 6 },
+  tag: { fontSize: 11.5, background: `${gold}1a`, color: gold, padding: "3px 10px", borderRadius: 12, fontWeight: 700 },
+  starList: { display: "grid", gap: 8 },
+  starListItem: {},
+  starListLabel: { fontSize: 12, fontWeight: 700, color: moss, marginBottom: 4 },
+  // 本能バー
+  honnoBars: { display: "grid", gap: 8, marginBottom: 14 },
+  honnoBarRow: { display: "flex", alignItems: "center", gap: 10 },
+  honnoBarLabel: { fontSize: 12.5, fontWeight: 700, width: 64, flexShrink: 0 },
+  honnoBarTrack: { flex: 1, height: 14, background: `${ink}0d`, borderRadius: 8, overflow: "hidden" },
+  honnoBarFill: { height: "100%", background: `linear-gradient(90deg, ${moss}, ${gold})`, borderRadius: 8, transition: "width 0.6s" },
+  honnoBarCount: { fontSize: 13, fontWeight: 700, width: 18, textAlign: "center", color: moss },
+  honnoNote: { fontSize: 13, lineHeight: 1.9, background: `${moss}0d`, padding: "12px 14px", borderRadius: 8, margin: 0 },
+  // 天中殺
+  tenchuBox: { background: `${vermillion}08`, border: `1px solid ${vermillion}33`, borderRadius: 10, padding: "16px 18px" },
+  // 大運
+  daiunFlow: { display: "grid", gap: 12 },
+  daiunCard: { display: "flex", gap: 14, background: "#fff", border: `1px solid ${gold}33`, borderRadius: 10, padding: "14px 16px" },
+  daiunAge: { flexShrink: 0, textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 50, borderRight: `2px dotted ${gold}44`, paddingRight: 12 },
+  daiunAgeNum: { fontFamily: "'Shippori Mincho', serif", fontSize: 26, fontWeight: 800, color: vermillion, lineHeight: 1 },
+  daiunAgeUnit: { fontSize: 11, color: `${ink}88` },
+  daiunBody: { flex: 1 },
+  daiunStars: { display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap" },
+  daiunKanshi: { fontFamily: "'Shippori Mincho', serif", fontSize: 15, fontWeight: 700, color: gold },
+  daiunMain: { fontSize: 14, fontWeight: 700, background: `${vermillion}12`, color: vermillion, padding: "2px 10px", borderRadius: 10 },
+  daiunFollow: { fontSize: 13, fontWeight: 700, background: `${moss}15`, color: moss, padding: "2px 10px", borderRadius: 10 },
+  daiunDesc: { fontSize: 12.5, lineHeight: 1.8, margin: "2px 0", color: `${ink}dd` },
+  energyBar: { display: "inline-block", width: 60, height: 8, background: `${ink}11`, borderRadius: 6, overflow: "hidden", margin: "0 6px", verticalAlign: "middle" },
+  energyFill: { display: "block", height: "100%", background: `linear-gradient(90deg, ${moss}, ${vermillion})` },
+  energyNum: { fontSize: 11, color: `${ink}99` },
+  // 学習 アコーディオン
+  groupHead: { fontFamily: "'Shippori Mincho', serif", fontSize: 15, fontWeight: 700, color: moss, marginBottom: 8, paddingBottom: 4, borderBottom: `1px solid ${moss}33` },
+  groupDesc: { fontSize: 11.5, fontWeight: 400, color: `${ink}99`, marginLeft: 6 },
+  acc: { marginBottom: 8, border: `1px solid ${gold}33`, borderRadius: 8, overflow: "hidden" },
+  accHead: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#fff", border: "none", cursor: "pointer", color: ink },
+  accBody: { padding: "0 12px 12px", background: "#fff" },
+  // 従星リスト
+  followRow: { display: "grid", gridTemplateColumns: "auto 1fr auto", gridTemplateAreas: "'name bar energy' 'desc desc desc'", gap: "4px 10px", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${gold}22` },
+  followName: { gridArea: "name" },
+  followYomi: { fontSize: 10.5, color: `${ink}88`, marginLeft: 6 },
+  followBarTrack: { gridArea: "bar", height: 10, background: `${ink}0d`, borderRadius: 6, overflow: "hidden", minWidth: 80 },
+  followBarFill: { height: "100%", background: `linear-gradient(90deg, ${moss}, ${vermillion})`, borderRadius: 6 },
+  followEnergy: { gridArea: "energy", fontSize: 13, fontWeight: 700, color: vermillion },
+  followDesc: { gridArea: "desc", fontSize: 12, color: `${ink}cc`, margin: "2px 0 0", lineHeight: 1.7 },
+  // 相性
+  aishoSelectRow: { display: "flex", alignItems: "center", gap: 12, marginBottom: 18, justifyContent: "center" },
+  aishoSelect: { padding: "10px 14px", fontSize: 15, fontWeight: 700, borderRadius: 8, border: `1.5px solid ${gold}55`, background: "#fff", color: ink, fontFamily: "'Shippori Mincho', serif" },
+  aishoVs: { fontSize: 18, fontWeight: 700, color: vermillion },
+  aishoResult: { border: "2px solid", borderRadius: 12, padding: "16px 18px", marginBottom: 16, background: "#fff" },
+  aishoRelation: { fontFamily: "'Shippori Mincho', serif", fontSize: 17, fontWeight: 800, marginBottom: 8 },
+  aishoDesc: { fontSize: 13.5, lineHeight: 1.95, margin: 0, color: `${ink}dd` },
+  aishoStars: { display: "grid", gap: 10 },
+  // 年運（時期）
+  nenunInputRow: { display: "flex", gap: 12, marginBottom: 12 },
+  nenunWarn: { fontSize: 12, color: gold, background: `${gold}12`, padding: "10px 12px", borderRadius: 8, margin: "0 0 12px", lineHeight: 1.7 },
+  rissyunNote: { fontSize: 12.5, lineHeight: 1.9, background: `${moss}0d`, border: `1px solid ${moss}44`, borderRadius: 8, padding: "12px 14px" },
+  timeline: { display: "flex", gap: 8, overflowX: "auto", padding: "6px 2px 12px", WebkitOverflowScrolling: "touch" },
+  timeChip: {
+    flexShrink: 0, width: 72, padding: "10px 4px", borderRadius: 10, border: "1.5px solid",
+    background: "#fff", cursor: "pointer", display: "flex", flexDirection: "column",
+    alignItems: "center", gap: 2, position: "relative", transition: "0.15s",
+  },
+  timeNow: { position: "absolute", top: -8, background: ink, color: paper, fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 8 },
+  timeYear: { fontSize: 14, fontWeight: 800, fontFamily: "'Shippori Mincho', serif" },
+  timeGanshi: { fontSize: 12, fontWeight: 700, opacity: 0.85, fontFamily: "'Shippori Mincho', serif" },
+  timeTag: { fontSize: 9.5, fontWeight: 700, color: vermillion, marginTop: 1 },
+  nenunDetailHead: { display: "flex", alignItems: "center", gap: 14, marginBottom: 14, flexWrap: "wrap" },
+  nenunGanshiBox: {
+    background: `linear-gradient(135deg, ${ink}, #3a302a)`, color: paper, borderRadius: 12,
+    padding: "12px 18px", textAlign: "center", flexShrink: 0,
+  },
+  nenunGanshiText: { display: "block", fontFamily: "'Shippori Mincho', serif", fontSize: 26, fontWeight: 800, lineHeight: 1.1 },
+  nenunGanshiYomi: { display: "block", fontSize: 10.5, opacity: 0.8, marginTop: 3 },
+  nenunBadge: { display: "inline-block", color: paper, fontSize: 13, fontWeight: 700, padding: "5px 16px", borderRadius: 20 },
+  nenunAge: { display: "block", fontSize: 12, color: `${ink}99`, marginTop: 6 },
+  nenunReadingText: { fontSize: 14, lineHeight: 2, margin: "0 0 12px", color: ink },
+  nenunSubText: { fontSize: 12.5, lineHeight: 1.9, background: `${gold}0f`, padding: "12px 14px", borderRadius: 8, margin: "0 0 12px", color: `${ink}dd` },
+  nenunDaiun: { fontSize: 13, lineHeight: 1.9, background: `${vermillion}08`, border: `1px solid ${vermillion}33`, borderRadius: 8, padding: "12px 14px" },
+  // フッター
+  footer: { maxWidth: 760, margin: "0 auto", padding: "20px 16px 40px", fontSize: 11.5, color: `${ink}99`, lineHeight: 1.8, textAlign: "center", borderTop: `1px solid ${gold}22` },
+  link: { color: vermillion, textDecoration: "underline" },
+};
